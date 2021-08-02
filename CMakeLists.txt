@@ -92,8 +92,10 @@ try_compile(
 
 option(BUILD_SHARED_LIBS "Build as a shared library" ON)
 option(BUILD_STATIC_LIBS "Build as a static library" ON)
+option(BUILD_OBJECT_LIBS "Build object files for use in other projects" ON)
 option(BUILD_MOCKTRACER "Build mocktracer library" ON)
 option(BUILD_DYNAMIC_LOADING "Build with dynamic loading support" ON)
+option(BUILD_TESTING "Build with unit test drivers" ON)
 
 if (BUILD_DYNAMIC_LOADING)
   if (NOT WIN32)
@@ -106,8 +108,12 @@ endif()
 
 set(OPENTRACING_BUILD_DYNAMIC_LOADING ${BUILD_DYNAMIC_LOADING})
 
-if (NOT BUILD_SHARED_LIBS AND NOT BUILD_STATIC_LIBS)
-    message(FATAL_ERROR "One or both of BUILD_SHARED_LIBS or BUILD_STATIC_LIBS must be set to ON to build")
+if (NOT BUILD_SHARED_LIBS AND NOT BUILD_STATIC_LIBS AND NOT BUILD_OBJECT_LIBS)
+    message(FATAL_ERROR "At least one or BUILD_SHARED_LIBS, BUILD_STATIC_LIBS, or BUILD_OBJECT_LIBS must be set to ON to build")
+endif()
+
+if (BUILD_TESTING AND NOT BUILD_SHARED_LIBS AND NOT BUILD_STATIC_LIBS)
+    message(FATAL_ERROR "One or both of BUILD_SHARED_LIBS or BUILD_STATIC_LIBS ON if BUILD_TESTING is ON")
 endif()
 
 # ==============================================================================
@@ -189,6 +195,14 @@ if (BUILD_STATIC_LIBS)
       ARCHIVE DESTINATION ${LIB_INSTALL_DIR})
 endif()
 
+if (BUILD_OBJECT_LIBS)
+  add_library(opentracing-object OBJECT ${SRCS})
+  set_property(TARGET opentracing-object PROPERTY POSITION_INDEPENDENT_CODE ON)
+  target_compile_definitions(opentracing-object PUBLIC OPENTRACING_STATIC)
+  target_include_directories(opentracing-object INTERFACE "$<INSTALL_INTERFACE:include/>")
+  install(TARGETS opentracing-object EXPORT OpenTracingTargets
+      ARCHIVE DESTINATION ${LIB_INSTALL_DIR})
+endif()
 
 install(DIRECTORY 3rd_party/include/opentracing/expected
             COMPONENT DEVEL
